@@ -21,7 +21,7 @@ namespace adonet_db_videogame
 
                     using (SqlCommand cmd = new SqlCommand(query, connection))
                     {
-                        // Aggiungi i parametri con i valori corrispondenti
+                        
                         cmd.Parameters.AddWithValue("@Name", videogame.Name);
                         cmd.Parameters.AddWithValue("@Overview", videogame.Overview);
                         cmd.Parameters.AddWithValue("@SoftwareHouseId", videogame.SoftwareHouseId);
@@ -29,7 +29,7 @@ namespace adonet_db_videogame
                         cmd.Parameters.AddWithValue("@UpdatedAt", videogame.UpdatedAt);
                         cmd.Parameters.AddWithValue("@ReleaseDate", videogame.ReleaseDate.ToString("dd/MM/yyyy")); 
 
-                        // Esegui il comando di inserimento dei dati
+                        
                         int rowsAffected = cmd.ExecuteNonQuery();
 
                         if (rowsAffected > 0)
@@ -81,7 +81,7 @@ namespace adonet_db_videogame
             {
                 string query = "SELECT id, name, release_date AS ReleaseDate, software_house_id AS SoftwareHouseId " +
                                "FROM Videogames " +
-                               "ORDER BY id DESC";
+                               "ORDER BY id ASC";
 
                 using (SqlCommand command = new SqlCommand(query, connection))
                 {
@@ -188,27 +188,72 @@ namespace adonet_db_videogame
         {
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
-                string query = "DELETE FROM Videogames WHERE Id = @Id";
+                connection.Open();
+                SqlTransaction transaction = connection.BeginTransaction();
 
-                using (SqlCommand command = new SqlCommand(query, connection))
+                try
                 {
-                    command.Parameters.AddWithValue("@Id", id);
-
-                    connection.Open();
-
-                    int rowsAffected = command.ExecuteNonQuery();
-
-                    if (rowsAffected > 0)
+                    string deleteTournamentQuery = "DELETE FROM tournament_videogame WHERE videogame_id = @Id";
+                    using (SqlCommand deleteTournamentCommand = new SqlCommand(deleteTournamentQuery, connection, transaction))
                     {
-                        Console.WriteLine($"Videogioco con ID {id} cancellato con successo.");
+                        deleteTournamentCommand.Parameters.AddWithValue("@Id", id);
+                        deleteTournamentCommand.ExecuteNonQuery();
                     }
-                    else
+
+                    string deleteReviewsQuery = "DELETE FROM reviews WHERE videogame_id = @Id";
+                    using (SqlCommand deleteReviewsCommand = new SqlCommand(deleteReviewsQuery, connection, transaction))
                     {
-                        Console.WriteLine($"Nessun videogioco trovato con l'ID {id}.");
+                        deleteReviewsCommand.Parameters.AddWithValue("@Id", id);
+                        deleteReviewsCommand.ExecuteNonQuery();
                     }
+                    string deletePegiLabelQuery = "DELETE FROM pegi_label_videogame WHERE videogame_id = @Id";
+                    using (SqlCommand deletePegiLabelCommand = new SqlCommand(deletePegiLabelQuery, connection, transaction))
+                    {
+                        deletePegiLabelCommand.Parameters.AddWithValue("@Id", id);
+                        deletePegiLabelCommand.ExecuteNonQuery();
+                    }
+
+                    string deleteDeviceQuery = "DELETE FROM device_videogame WHERE videogame_id = @Id";
+                    using (SqlCommand deleteDeviceCommand = new SqlCommand(deleteDeviceQuery, connection, transaction))
+                    {
+                        deleteDeviceCommand.Parameters.AddWithValue("@Id", id);
+                        deleteDeviceCommand.ExecuteNonQuery();
+                    }
+
+                    string deleteCategoryQuery = "DELETE FROM category_videogame WHERE videogame_id = @Id";
+                    using (SqlCommand deleteCategoryCommand = new SqlCommand(deleteCategoryQuery, connection, transaction))
+                    {
+                        deleteCategoryCommand.Parameters.AddWithValue("@Id", id);
+                        deleteCategoryCommand.ExecuteNonQuery();
+                    }
+
+                    string deleteVideogameQuery = "DELETE FROM Videogames WHERE Id = @Id";
+                    using (SqlCommand deleteVideogameCommand = new SqlCommand(deleteVideogameQuery, connection, transaction))
+                    {
+                        deleteVideogameCommand.Parameters.AddWithValue("@Id", id);
+                        int rowsAffected = deleteVideogameCommand.ExecuteNonQuery();
+
+                        if (rowsAffected > 0)
+                        {
+                            Console.WriteLine($"Videogioco con ID {id} cancellato con successo.");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"Nessun videogioco trovato con l'ID {id}.");
+                        }
+                    }
+                    transaction.Commit();
+                }
+                catch (Exception ex)
+                {    
+                    Console.WriteLine($"Errore durante la cancellazione del videogioco: {ex.Message}");
+                    transaction.Rollback();
                 }
             }
         }
+
+
+
     }
 
 }
